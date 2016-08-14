@@ -43,3 +43,47 @@ public class MainActivity extends AppCompatActivity
         recyclerView.setItemAnimator(new DefaultItemAnimator());
     }
 }
+void CPIctTestDlg::OnBnClickedButton1()
+{
+
+	CDbSQLite sqlite; 
+	sqlite3 *db;
+	char *zErrMsg = 0;
+	int  rc;
+	string sql =  "SELECT ST,STL FROM COMPANY WHERE STL >=2" ;
+	string st ="INSERT INTO COMPANY(ST,STL)"\
+			   "VALUES('HELLO','1');"
+			   "INSERT INTO COMPANY(ST,STL)"\
+			     "VALUES('DOYOU','3');";
+ 
+	  rc = sqlite3_open("theTestSqlite.db", &db);
+	 
+	  rc = sqlite3_exec(db, sql.c_str(), callback, 0, &zErrMsg);
+	   if( rc != SQLITE_OK )
+		   AfxMessageBox(_T("不能创建表usersInfo")); 
+
+	/*if (!fTest) 
+	{ 
+		AfxMessageBox(_T("打不开theTestSqlite.db")); 
+		return; 
+	} */
+	//执行创建表语句 
+	//fTest = sqlite.DirectStatement(_T("CREATE TABLE usersIN(name varchar(30), password varchar(20),st, Text)")); 
+	//fTest = sqlite.DirectStatement(st);
+	//if (!fTest) 
+	//	AfxMessageBox(_T("不能创建表usersInfo")); 
+	////新增数据 
+ sqlite3_close(db);
+	
+}
+
+static int callback(void *NotUsed, int argc, char **argv, char **azColName){
+	
+	TRACE("%s",NotUsed);
+	for(int i=0;i<argc; i++){
+		//TRACE("%s = %s\n", azColName[i],argv[i] ? argv[i] : "NULL");
+		TRACE("%d,%s=%s\n",argc,azColName[i],argv[i]);
+	}
+	printf("\n");
+	return 0;
+}
