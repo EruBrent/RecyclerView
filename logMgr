@@ -1,0 +1,121 @@
+#pragma once
+
+#include <string>
+#include <list>
+#include <time.h>
+#include <vector>
+#include <algorithm> 
+#include "json/jsoncpp.h"
+#include "DlgAlarmLogLst.h"
+#include "sqlite3.h"
+
+//#include "DlgAlarmFilter.h"
+
+
+using namespace std;
+class CDlgAlarmFilter;
+class CDlgAlarmLogLst;
+
+typedef struct AlarmIndexPoint{
+	string level;
+	vector<struct AlarmIndexPoint> point;
+}ALARM_INDEX_POINT;
+
+typedef struct locationInfo{
+	locationInfo(): level_logType("报警日志"), level_logHost("12F"){}
+	string level_logType;
+	string level_logArea;
+	string level_logUnit;
+	string level_logHost;
+	
+}LOCATION_INFO;
+//typedef LOCATION_INFO* locationInfo;
+//search setting
+typedef struct AlarmSearchCondition
+{
+	CTime		  m_dateBegin;
+	CTime		  m_dateEnd;
+	CTime		  m_timeBegin;
+	CTime		  m_timeEnd;
+	CString		  m_logType;
+	CString		  m_deviceType;
+	CString		  m_ereaType;
+	CString		  m_unitType;
+}CG_ALARM_SEARCH_CONDITION;
+
+typedef struct AlarmSearchSave
+{
+	CTime		  m_dateBegin;
+	CTime		  m_dateEnd;
+	CTime		  m_timeBegin;
+	CTime		  m_timeEnd;
+	char		  m_logType[50];
+	char		  m_deviceType[50];
+	char		  m_ereaType[50];
+	char		  m_unitType[50];
+}CG_SETTING_SAVE;
+
+//在CListCtrl里显示的内容
+typedef struct AlarmInfoShow
+{
+	AlarmInfoShow():m_num(1),m_strFrom("null"),m_strUser("null"),m_strContent("null"),m_strResult("null"){}
+	int			  m_num;
+	string		  m_strFrom;
+	string		  m_strTime;
+	string		  m_strUser;
+	string		  m_strContent;
+	string		  m_strResult;
+	LOCATION_INFO  locaInfo;
+}CG_ALARMINFO_SHOW;
+
+
+
+class CAlarmRecord
+{
+public:
+	CAlarmRecord(void);
+private:
+	Json::Value m_val;
+public:
+	~CAlarmRecord(void);
+	
+
+	bool InitAlarmData(string jsonStr);	
+	void SearchAlarmData(CG_ALARM_SEARCH_CONDITION* SearchCondition);		
+	vector<Json::Value> get_ValJsonAlarmRecord(void);
+	void ShowAlarmInfo(void);
+	bool SearchAlarmData(Json::Value m_Value,CString type);
+	void SaveSearchSetting(void);
+	void WriterAlarmLog(CG_ALARMINFO_SHOW val_saveLog);
+	void CmpTime(vector<Json::Value> vecUnit);
+	void SortLogByTime(vector<CG_ALARMINFO_SHOW> &val_AlarmInfoShow);
+	void ReadInitAlarmLog(void);
+	void searchInsert(void);
+	/*summary:获得文件所在路径*/
+	string getFolderPath(string folderName);
+	int Cstr_replace(string &str, const string &src, const string &dest);
+	static	bool				bClk;
+	string						strVal;
+	vector<CG_ALARMINFO_SHOW>	val_AlarmInfoShow;
+protected:
+	CG_ALARMINFO_SHOW			AlarmInfo_show;	
+	CG_ALARM_SEARCH_CONDITION	*s_searchCond;
+	vector<Json::Value>			m_jAlarmData;
+	
+	CDlgAlarmLogLst				*m_DlgLst;
+};
+
+
+static CAlarmRecord *g_alarmRecord;
+
+CAlarmRecord *GetAlarmRecord();
+
+template<typename Input, typename Output>
+inline void SQL_escape(Input in, Output &out) {
+	if(*in=='\'') *out++='\'';
+	*out++=*in;
+}
+
+template<typename Input, typename Output>
+inline void SQL_escape(Input start, Input stop, Output out)
+{ for(Input i=start; i!=stop; ++i) SQL_escape(i, out); }
