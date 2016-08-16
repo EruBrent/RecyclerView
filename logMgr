@@ -22,12 +22,12 @@ typedef struct AlarmIndexPoint{
 }ALARM_INDEX_POINT;
 
 typedef struct locationInfo{
-	locationInfo(): level_logType("报警日志"), level_logHost("12F"){}
+	locationInfo(): level_logType("报警日志"), level_logHost("F12"){}
 	string level_logType;
 	string level_logArea;
 	string level_logUnit;
 	string level_logHost;
-	
+
 }LOCATION_INFO;
 //typedef LOCATION_INFO* locationInfo;
 //search setting
@@ -75,11 +75,9 @@ class CAlarmRecord
 public:
 	CAlarmRecord(void);
 private:
-	Json::Value m_val;
+	
 public:
 	~CAlarmRecord(void);
-	
-
 	bool InitAlarmData(string jsonStr);	
 	void SearchAlarmData(CG_ALARM_SEARCH_CONDITION* SearchCondition);		
 	vector<Json::Value> get_ValJsonAlarmRecord(void);
@@ -94,14 +92,19 @@ public:
 	/*summary:获得文件所在路径*/
 	string getFolderPath(string folderName);
 	int Cstr_replace(string &str, const string &src, const string &dest);
+	
+
+public:
+
+
 	static	bool				bClk;
 	string						strVal;
-	vector<CG_ALARMINFO_SHOW>	val_AlarmInfoShow;
+	
 protected:
 	CG_ALARMINFO_SHOW			AlarmInfo_show;	
 	CG_ALARM_SEARCH_CONDITION	*s_searchCond;
 	vector<Json::Value>			m_jAlarmData;
-	
+
 	CDlgAlarmLogLst				*m_DlgLst;
 };
 
