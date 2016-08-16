@@ -1,0 +1,567 @@
+#include "StdAfx.h"
+#include "AlarmLogMgr.h"
+#include <time.h>
+#include <windef.h>
+#include "IUserJsonData.h"
+#include "imagehlp.h"
+#include "sqlite3.h"
+bool CAlarmRecord::bClk = true;
+#pragma comment(lib,"sqlite3.lib")
+
+
+static CString searchKey[6];
+int callback(void *NotUsed, int argc, char **argv, char **azColName);
+vector<CG_ALARMINFO_SHOW>	val_AlarmInfoShow;
+CAlarmRecord::CAlarmRecord(void)
+{	
+	memset(&AlarmInfo_show, 0, sizeof(CG_ALARMINFO_SHOW));
+
+	s_searchCond = new CG_ALARM_SEARCH_CONDITION;
+	memset(s_searchCond, 0, sizeof(CG_ALARM_SEARCH_CONDITION));
+
+}
+
+CAlarmRecord::~CAlarmRecord(void)
+{
+
+	delete s_searchCond;
+}
+
+
+
+/*Matching search condition*/
+void CAlarmRecord::SearchAlarmData(CG_ALARM_SEARCH_CONDITION* SearchCondition)
+{
+	this->s_searchCond = SearchCondition;
+	CString startDate = SearchCondition->m_dateBegin.Format("%Y-%m-%d ");
+	CString startTime = SearchCondition->m_timeBegin.Format("%H:%M:%S");
+	CString endDate = SearchCondition->m_dateEnd.Format("%Y-%m-%d ");
+	CString endTime = SearchCondition->m_timeEnd.Format("%H:%M:%S");
+	startDate += startTime;
+	endDate +=endTime;
+	searchKey[0] = SearchCondition->m_logType;
+	searchKey[1] = SearchCondition->m_deviceType;
+	searchKey[2] = SearchCondition->m_ereaType;
+	searchKey[3] = SearchCondition->m_unitType;
+	searchKey[4] = startDate;
+	searchKey[5] = endDate;
+
+	string hostCon = SearchCondition->m_unitType;
+	hostCon +="condition";
+	sqlite3 *db;
+	char *zErrMsg =0;
+	int  rc;
+	const char* judgment = "xiju";
+	string sql = "SELECT TEXT FROM HOSTNAME";
+	rc = sqlite3_open("log.db", &db); 
+	rc = sqlite3_exec(db, sql.c_str(), callback, (void*)judgment, &zErrMsg); 
+	if(rc!= SQLITE_OK)	//如果数据库中没有要查询的主机
+		return;
+
+	sqlite3_close(db);
+	//if (file.Open("D:\\Project\\SVN\\server_alarm--\\Alarm\\Debug\\dell.dat", CFile::modeReadWrite | CFile::typeBinary))
+	//{
+	//	int nLen = (int)file.GetLength() + 1;
+	//	char *pBuf = (char *)malloc(nLen + 1);
+	//	memset(pBuf, 0, nLen + 1);
+	//	file.Read(pBuf, nLen);
+	//	strVal = pBuf;
+	//	//gUserJson.ConverToJson(m_val, strVal);
+	//	free(pBuf);
+	//	file.Close();
+	//}
+	//val_AlarmInfoShow.clear();
+	//int err = GetLastError();
+	//Json::Reader reader;  
+	//Json::Value value;  
+
+	//if (reader.parse(strVal, value)) 
+	//{	
+	//	Json::Value lt = value["logType"]["log"];
+	//	CG_ALARMINFO_SHOW dataInfo;
+	//	if(SearchAlarmData(lt,searchKey[0]))
+	//	{
+	//			if(SearchAlarmData(value["logType"]["logArea"]["area"],searchKey[1]))
+	//				if(SearchAlarmData(value["logType"]["logArea"]["logUnit"]["unit"],searchKey[2]))
+	//					if(SearchAlarmData(value["logType"]["logArea"]["logUnit"]["logHost"]["host"],searchKey[3]))
+	//					{
+	//						lt =value["logType"]["logArea"]["logUnit"]["logHost"]["otherHost"];
+	//						 dataInfo.m_strTime = lt["time"].asString();
+
+	//						if(dataInfo.m_strTime.c_str()>=startTime&&dataInfo.m_strTime.c_str()<=endTime)
+	//							
+	//						dataInfo.m_num = lt["num"].asInt();
+	//						dataInfo.m_strContent = lt["content"].asString();
+	//						dataInfo.m_strFrom = lt["strFrom"].asString();
+	//						dataInfo.m_strResult = lt["result"].asString();
+	//						dataInfo.m_strUser = lt["user"].asString();
+	//						val_AlarmInfoShow.push_back(dataInfo);
+	//					}
+	//						
+	//			
+	//	}
+
+	//	
+	//}
+
+
+	vector<Json::Value>::iterator	it;
+	if(!m_jAlarmData.empty())
+	{
+		vector<Json::Value> vecLog;
+		if(SearchCondition->m_logType == "日志类型"||SearchCondition->m_deviceType == "全部设备"
+			||SearchCondition->m_ereaType == "全部区域"||SearchCondition->m_unitType == "全部单元")
+		{
+
+		}
+	}
+
+}
+
+void CAlarmRecord::CmpTime(vector<Json::Value> vecUnit)
+{
+
+	CTime d1 = s_searchCond->m_dateBegin;
+	CTime d2 = s_searchCond->m_dateEnd;
+	CTime t1 = s_searchCond->m_timeBegin;
+	CTime t2 = s_searchCond->m_timeEnd;
+	CTime dtBegin(d1.GetYear(), d1.GetMonth(), d1.GetDay(), t1.GetHour(), t1.GetMinute(), t1.GetSecond());
+	CTime dtEnd(d2.GetYear(), d2.GetMonth(), d2.GetDay(), t2.GetHour(), t2.GetMinute(), t2.GetSecond());
+	char cTimeBegin[50] = {0};
+	char cTimeEnd[50] = {0};
+	char data[50] = {0};
+	int rowCnt = 0;
+	struct tm sTime;
+	time_t tBegin = dtBegin.GetTime();
+	time_t tEnd = dtEnd.GetTime();	
+	vector<Json::Value>::iterator it;
+
+	for(it = vecUnit.begin(); it != vecUnit.end(); it++)
+	{
+		Json::Value tmp = *it;
+		strcpy(data,tmp["host_date"].asString().c_str());			
+		//将时间字符串格式化成struct tm;
+		sscanf(data, "%d-%d-%d %d:%d:%d", &sTime.tm_year, &sTime.tm_mon, &sTime.tm_mday, &sTime.tm_hour, &sTime.tm_min, &sTime.tm_sec);
+		sTime.tm_year -= 1900;
+		sTime.tm_mon -= 1;
+		time_t tLog = mktime(&sTime);
+		if((tLog >= tBegin) && (tLog <= tEnd))			
+		{
+			AlarmInfo_show.m_num = rowCnt;
+			AlarmInfo_show.m_strFrom = tmp["dev_type"].asString().c_str();
+			AlarmInfo_show.m_strTime = data;
+			AlarmInfo_show.m_strUser = tmp["user"].asString().c_str();
+			AlarmInfo_show.m_strContent = tmp["content"].asString().c_str();
+			AlarmInfo_show.m_strResult = tmp["result"].asString().c_str();
+
+			val_AlarmInfoShow.push_back(AlarmInfo_show);
+			rowCnt++;
+		}
+	}	
+}
+
+
+// 
+bool CAlarmRecord::InitAlarmData(string jsonStr)
+{
+	Json::Value val;
+
+	for (int i = 0; i < 100; i++)
+	{
+		char bufDev[100] = {0};
+		char bufArea[100] = {0};
+		char bufUnit[100] = {0};
+		char bufUserName[100] = {0};
+		char bufHost[100] = {0};
+		char bufDate[50] = {0};
+		//		char bufTime[20] = {0};
+
+		if(i<30)
+		{
+			int j = 1;
+			sprintf(bufDev, "Device%04d", j);
+			sprintf(bufArea, "Arae%04d", j);
+			sprintf(bufUnit, "Unit%04d", j);
+		}
+		if(i>=30 && i<60)
+		{
+			int j = 2;
+			sprintf(bufDev, "Device%04d", j);
+			sprintf(bufArea, "Arae%04d", j);
+			sprintf(bufUnit, "Unit%04d", j);
+		}
+		if(i>=60)
+		{
+			int j = 3;
+			sprintf(bufDev, "Device%04d", j);
+			sprintf(bufArea, "Arae%04d", j);
+			sprintf(bufUnit, "Unit%04d", j);
+		}
+
+		val["defense_dtype"] = bufDev;	//dev_type
+
+		val["host_area"] = bufArea;		//areaType
+		val["defense_name"] = bufUnit;	//unitType
+		val["host_id"] =  i;
+		val["host_ver"] =  "1.0";
+		if (i %3 == 0)
+			val["log_dtype"] = "报警日志";   //log_type
+		if(i%3 == 1)
+			val["log_dtype"] = "设置日志";
+		if (i%3 == 2)
+			val["log_dtype"] = "操作日志";
+
+		sprintf(bufUserName, "Test_user%04d", i+1);
+		sprintf(bufHost, "host_name%04d", i+1);
+		val["dev_type"] = bufHost;  //from
+		//		int m_time = time(NULL);
+		int year = 2016;
+		int month = 5;
+		int day = (i+1)%32;
+		if(0 == day)
+			++day;
+		int hour = (i+1)%24;
+		int min = (i+1)%60;
+		int sec = (i+1)%60;
+		sprintf(bufDate,"%04d-%02d-%02d %02d:%02d:%02d",year,month,day,hour,min,sec);
+		val["host_date"] = bufDate;  //data
+		val["user"] = bufUserName; //userName
+		val["content"] = "my test log!";  //content
+		val["result"] = "success!"; //result
+		val["phones_array"] = Json::arrayValue;
+		for (int j = 0; j < 3; j++)
+		{
+			Json::Value valTemp;
+			valTemp["phone_num"] = "13688907907";
+			valTemp["country_code"] = "86";
+			//....
+
+			val["phones_array"].append(valTemp);
+		}
+
+		m_jAlarmData.push_back(val);
+	}	
+	return true;
+}
+
+
+vector<Json::Value> CAlarmRecord::get_ValJsonAlarmRecord(void)
+{
+	return m_jAlarmData;
+}
+
+///////////////////////////////////////////////////////////////////////////
+//Update alarm log
+//////////////////////////////////////////////////////////////////////////
+void CAlarmRecord::ShowAlarmInfo()
+{
+
+	CFile file;
+	string FileName = "alarmLog.dat";
+	//string path = getFolderPath(FileName);
+
+	CDlgAlarmLogLst* pWnd= m_DlgLst->GetLstDlgHandle();
+	CListCtrl *m_lstLogViewer = ((CListCtrl*)pWnd->GetDlgItem(IDC_LST_LOGLST));
+
+	m_lstLogViewer->DeleteAllItems();
+
+	int i = 0;
+	CString rowNum;
+	vector<CG_ALARMINFO_SHOW>::iterator it;
+	if(!val_AlarmInfoShow.empty())
+	{
+		SortLogByTime(val_AlarmInfoShow);
+		for( it = val_AlarmInfoShow.begin(); it!=val_AlarmInfoShow.end(); it++)
+		{
+			rowNum.Format("%d",i+1);
+			int nRow = m_lstLogViewer->InsertItem(i, rowNum);								//插入行
+			m_lstLogViewer->SetItemText(nRow, 1, ((*it).m_strFrom).c_str());							
+			m_lstLogViewer->SetItemText(nRow, 2, ((*it).m_strTime).c_str());								
+			m_lstLogViewer->SetItemText(nRow, 3, ((*it).m_strUser).c_str());								
+			m_lstLogViewer->SetItemText(nRow, 4, ((*it).m_strContent).c_str());		
+			m_lstLogViewer->SetItemText(nRow, 5, ((*it).m_strResult).c_str());	
+			i++;
+		}
+	}
+	else
+	{
+
+
+		AfxMessageBox("没有搜索到相应的记录！");
+
+	}
+
+
+	//WriterAlarmLog(val_AlarmInfoShow);
+}
+
+static bool SortLogAscd(CG_ALARMINFO_SHOW &v1, CG_ALARMINFO_SHOW &v2)
+{
+	return v1.m_strTime < v2.m_strTime;
+}
+
+static bool SortLogDescd(CG_ALARMINFO_SHOW &v1, CG_ALARMINFO_SHOW &v2)
+{
+	return v1.m_strTime > v2.m_strTime;
+}
+
+void CAlarmRecord::SortLogByTime(vector<CG_ALARMINFO_SHOW> &val_AlarmInfoShow)
+{
+	if(bClk)
+	{
+		std::sort(val_AlarmInfoShow.begin(),val_AlarmInfoShow.end(),SortLogAscd);
+	}
+	else
+	{
+		std::sort(val_AlarmInfoShow.begin(),val_AlarmInfoShow.end(),SortLogDescd);
+	}	
+}
+
+void CAlarmRecord::SaveSearchSetting()
+{
+	CG_SETTING_SAVE s_setting_save;
+	s_setting_save.m_dateBegin = s_searchCond->m_dateBegin;
+	s_setting_save.m_dateEnd = s_searchCond->m_dateEnd;
+	s_setting_save.m_timeBegin = s_searchCond->m_timeBegin;
+	s_setting_save.m_timeEnd = s_searchCond->m_timeEnd;
+	strcpy(s_setting_save.m_logType, s_searchCond->m_logType);
+	strcpy(s_setting_save.m_deviceType, (s_searchCond->m_deviceType));
+	strcpy(s_setting_save.m_ereaType, (s_searchCond->m_ereaType));
+	strcpy(s_setting_save.m_unitType, (s_searchCond->m_unitType));
+
+	CFile file;
+	char cSearchCond[MAX_PATH]; //TCHAR 
+	GetModuleFileName(NULL, cSearchCond, MAX_PATH);
+	(_tcsrchr(cSearchCond, _T('\\')))[1] = 0;
+	char folderName[] = "srchsetting.dat";
+	strcat(cSearchCond,folderName);
+	file.Open(cSearchCond,CFile::modeCreate|CFile::modeReadWrite);
+	file.Write(&s_setting_save, sizeof(CG_SETTING_SAVE));	
+	file.Flush();
+	file.Close();
+}
+
+void CAlarmRecord::WriterAlarmLog(CG_ALARMINFO_SHOW val_saveLog)
+{
+	Json::Value otherInfo;
+	Json::Value root;
+	Json::Value condition;
+	Json::Reader reader;  
+	Json::Value value;
+	string srtlen;
+
+	otherInfo["num"] = val_saveLog.m_num;
+	otherInfo["content"] = val_saveLog.m_strContent;
+	otherInfo["strFrom"] = val_saveLog.m_strFrom;
+	otherInfo["result"] = val_saveLog.m_strResult;
+	otherInfo["time"] = val_saveLog.m_strTime;
+	otherInfo["user"] = val_saveLog.m_strUser;
+	otherInfo["levelType"] =val_saveLog.locaInfo.level_logType;
+	otherInfo["levelArea"] = val_saveLog.locaInfo.level_logArea;
+	otherInfo["levelUnit"] = val_saveLog.locaInfo.level_logUnit;
+	otherInfo["levelHost"] = val_saveLog.locaInfo.level_logHost;
+
+	condition["levelType"] =val_saveLog.locaInfo.level_logType;
+	condition["levelArea"] = val_saveLog.locaInfo.level_logArea;
+	condition["levelUnit"] = val_saveLog.locaInfo.level_logUnit;
+	condition["levelHost"] = val_saveLog.locaInfo.level_logHost;
+	condition["time"] = val_saveLog.m_strTime;
+
+
+	Json::StyledWriter Writer;
+	string doc = Writer.write(otherInfo);
+	string searchCondition = Writer.write(condition);
+	sqlite3 *db;
+	char *zErrMsg = 0;
+	int  rc;
+	std::string escaped;
+	SQL_escape(doc.begin(), doc.end(), std::back_inserter(escaped));
+
+	string te = "''";
+	te.insert(1,escaped) ;
+	//te += "'";
+
+	string con = "''";
+	con.insert(1,searchCondition) ;
+	
+	string val_logHost = val_saveLog.locaInfo.level_logHost;
+	string text = " Text";
+	string logText ="ALTER TABLE HOSTNAME ADD COLUMN  Text";
+	logText.insert(32,val_logHost);
+
+	string sql = "SELECT *FROM HOSTNAME";
+	string st ="INSERT INTO HOSTNAME( ) VALUES( )";
+	st.insert(21,val_logHost);
+	st.insert(34,te.c_str());
+	const char* tem="not";
+
+
+	rc = sqlite3_open("log.db", &db); 
+	rc = sqlite3_exec(db, sql.c_str(), callback, (void*)tem, &zErrMsg);
+	//rc = sqlite3_exec(db, logText.c_str(), callback, 0, &zErrMsg);
+	//rc = sqlite3_exec(db, st.c_str(), callback, 0, &zErrMsg);
+
+
+	sqlite3_close(db);
+
+}
+
+int callback(void *NotUsed, int argc, char **argv, char **azColName){
+
+	if(strcmp((const char*)NotUsed,"xiju")==0)
+	{
+		Json::Reader reader;  
+		Json::Value value; 
+		string m_val;
+		CG_ALARMINFO_SHOW infoShow;
+		for(int i=0;i<argc; i++){
+			//TRACE("%s = %s\n", azColName[i],argv[i] ? argv[i] : "NULL");
+			TRACE("%d,%s=%s\n",argc,azColName[i],argv[i]);
+			m_val = argv[i];
+			if (reader.parse(m_val, value)) 
+			{
+				CString lv_ty = value["levelType"].asCString();
+				CString lv_ar = value["levelArea"].asCString();
+				CString lv_ut = value["levelUnit"].asCString();
+				CString lv_ho = value["levelHost"].asCString(); 
+				CString ti = value["time"].asCString();
+				TRACE("%s",searchKey[1]);
+				if(lv_ty==searchKey[0] && lv_ar==searchKey[1] 
+				   &&lv_ut==searchKey[2]&&lv_ho==searchKey[3]
+				   &&(ti>=searchKey[4]&&ti<=searchKey[5]))
+				   {
+					   int	  num     = value["num"].asInt();
+					   string content = value["content"].asString();
+					   string strFrom = value["strFrom"].asString();
+					   string result  = value["result"].asString();
+					   string time    = value["time"].asString();
+					   string user	  = value["user"].asString();
+					   val_AlarmInfoShow.push_back(infoShow);
+
+				   }
+					   
+
+
+			}	
+			
+		}
+	}
+	 
+	return 0;
+
+}
+
+//void CAlarmRecord::searchInsert(void)
+//{
+//	Json::Value testValue;
+//	vector <string> indexName;
+//	vector<ALARM_INDEX_POINT> logType;
+//	for(vector<ALARM_INDEX_POINT>::iterator it = logType.begin();it!=logType.end();it++) //日志类型
+//	{
+//		if(indexName.at(0) == it->type)
+//			for(vector<ALARM_INDEX_POINT>::iterator ite = it->point.begin();ite!=it->point.end();ite++)//区域类型
+//				if(indexName.at(1)==ite->type)
+//					for(vector<ALARM_INDEX_POINT>::iterator iter = ite->point.begin();iter!=ite->point.begin();iter++)
+//						if(indexName.at(2)==iter->type)
+//	}
+//
+//}
+
+//void CAlarmRecord::SaveSe(string index, vector<ALARM_INDEX_POINT> type)
+//{
+//	for (vector<ALARM_INDEX_POINT>::iterator it = type.begin();it!=type.end();it++)
+//	{
+//		if (index ==)
+//		{
+//		}
+//	}
+//}
+
+void CAlarmRecord::ReadInitAlarmLog(void)
+{
+	CDlgAlarmLogLst* pWnd= m_DlgLst->GetLstDlgHandle();
+	CListCtrl *m_lstLogViewer = ((CListCtrl*)pWnd->GetDlgItem(IDC_LST_LOGLST));
+
+	CFile file;
+	char cSearchCond[MAX_PATH];
+	GetModuleFileName(NULL, cSearchCond, MAX_PATH);
+	(_tcsrchr(cSearchCond, _T('\\')))[1] = 0;
+	char folderName[] = "alarmLog.dat";		
+	strcat(cSearchCond,folderName);
+
+	if(file.Open(cSearchCond,CFile::modeRead))
+	{
+		struct SaveLog
+		{
+			int			m_num;
+			string		m_strFrom;	
+			char		m_strTime[20];
+			string		m_strUser;
+			string		m_strContent;
+			string		m_strResult;
+		}s_tmp;
+
+		CString rowNum;
+		int nLen = (int)file.GetLength();
+		int nCnt = nLen/sizeof(SaveLog);
+		for(int i=0; i<nCnt; i++)
+		{
+			file.Read(&s_tmp, sizeof(SaveLog));
+			rowNum.Format("%d",i+1);
+			int cRow = m_lstLogViewer->InsertItem(i, rowNum);								//插入行
+			m_lstLogViewer->SetItemText(cRow, 1, (s_tmp.m_strFrom).c_str());							
+			m_lstLogViewer->SetItemText(cRow, 2, s_tmp.m_strTime);					
+			m_lstLogViewer->SetItemText(cRow, 3, (s_tmp.m_strUser).c_str());								
+			m_lstLogViewer->SetItemText(cRow, 4, (s_tmp.m_strContent).c_str());		
+			m_lstLogViewer->SetItemText(cRow, 5, (s_tmp.m_strResult).c_str());
+
+			AlarmInfo_show.m_num = s_tmp.m_num;											
+			AlarmInfo_show.m_strFrom = s_tmp.m_strFrom;
+			AlarmInfo_show.m_strTime = s_tmp.m_strTime;
+			AlarmInfo_show.m_strContent = s_tmp.m_strContent;
+			AlarmInfo_show.m_strUser = s_tmp.m_strUser;
+			AlarmInfo_show.m_strResult = s_tmp.m_strResult;
+			val_AlarmInfoShow.push_back(AlarmInfo_show);					//启动程序后直接对保存的log按时间排序需要用到
+		}
+
+		file.Close();	
+	}
+
+	return;
+}
+
+CAlarmRecord *GetAlarmRecord()
+{
+	if (g_alarmRecord == NULL)
+	{
+		g_alarmRecord = new CAlarmRecord;
+	}
+	return g_alarmRecord;
+}
+
+/*------------------------------我的名字叫分割线----------------------------------------*/
+string CAlarmRecord::getFolderPath(string folderName)
+{
+	char cSearchCond[MAX_PATH]; //TCHAR 
+	GetModuleFileName(NULL, cSearchCond, MAX_PATH);
+	(_tcsrchr(cSearchCond, _T('\\')))[1] = 0;
+	strcat(cSearchCond,folderName.c_str());
+	return cSearchCond;
+
+}
+
+bool CAlarmRecord::SearchAlarmData(Json::Value m_Value,CString type)
+{
+
+	for(int i = 0;i<m_Value.size();++i)
+	{
+		string st = m_Value[i].asString();
+		if(st.c_str()==type){
+			return true;
+
+			break;
+		}
+	}
+	return false;
+}
+
