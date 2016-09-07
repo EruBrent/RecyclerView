@@ -1,567 +1,637 @@
-#include "StdAfx.h"
-#include "AlarmLogMgr.h"
-#include <time.h>
-#include <windef.h>
-#include "IUserJsonData.h"
-#include "imagehlp.h"
-#include "sqlite3.h"
-bool CAlarmRecord::bClk = true;
-#pragma comment(lib,"sqlite3.lib")
-
-
-static CString searchKey[6];
-int callback(void *NotUsed, int argc, char **argv, char **azColName);
-vector<CG_ALARMINFO_SHOW>	val_AlarmInfoShow;
-CAlarmRecord::CAlarmRecord(void)
-{	
-	memset(&AlarmInfo_show, 0, sizeof(CG_ALARMINFO_SHOW));
-
-	s_searchCond = new CG_ALARM_SEARCH_CONDITION;
-	memset(s_searchCond, 0, sizeof(CG_ALARM_SEARCH_CONDITION));
-
-}
-
-CAlarmRecord::~CAlarmRecord(void)
-{
-
-	delete s_searchCond;
-}
-
-
-
-/*Matching search condition*/
-void CAlarmRecord::SearchAlarmData(CG_ALARM_SEARCH_CONDITION* SearchCondition)
-{
-	this->s_searchCond = SearchCondition;
-	CString startDate = SearchCondition->m_dateBegin.Format("%Y-%m-%d ");
-	CString startTime = SearchCondition->m_timeBegin.Format("%H:%M:%S");
-	CString endDate = SearchCondition->m_dateEnd.Format("%Y-%m-%d ");
-	CString endTime = SearchCondition->m_timeEnd.Format("%H:%M:%S");
-	startDate += startTime;
-	endDate +=endTime;
-	searchKey[0] = SearchCondition->m_logType;
-	searchKey[1] = SearchCondition->m_deviceType;
-	searchKey[2] = SearchCondition->m_ereaType;
-	searchKey[3] = SearchCondition->m_unitType;
-	searchKey[4] = startDate;
-	searchKey[5] = endDate;
-
-	string hostCon = SearchCondition->m_unitType;
-	hostCon +="condition";
-	sqlite3 *db;
-	char *zErrMsg =0;
-	int  rc;
-	const char* judgment = "xiju";
-	string sql = "SELECT TEXT FROM HOSTNAME";
-	rc = sqlite3_open("log.db", &db); 
-	rc = sqlite3_exec(db, sql.c_str(), callback, (void*)judgment, &zErrMsg); 
-	if(rc!= SQLITE_OK)	//如果数据库中没有要查询的主机
-		return;
-
-	sqlite3_close(db);
-	//if (file.Open("D:\\Project\\SVN\\server_alarm--\\Alarm\\Debug\\dell.dat", CFile::modeReadWrite | CFile::typeBinary))
-	//{
-	//	int nLen = (int)file.GetLength() + 1;
-	//	char *pBuf = (char *)malloc(nLen + 1);
-	//	memset(pBuf, 0, nLen + 1);
-	//	file.Read(pBuf, nLen);
-	//	strVal = pBuf;
-	//	//gUserJson.ConverToJson(m_val, strVal);
-	//	free(pBuf);
-	//	file.Close();
-	//}
-	//val_AlarmInfoShow.clear();
-	//int err = GetLastError();
-	//Json::Reader reader;  
-	//Json::Value value;  
-
-	//if (reader.parse(strVal, value)) 
-	//{	
-	//	Json::Value lt = value["logType"]["log"];
-	//	CG_ALARMINFO_SHOW dataInfo;
-	//	if(SearchAlarmData(lt,searchKey[0]))
-	//	{
-	//			if(SearchAlarmData(value["logType"]["logArea"]["area"],searchKey[1]))
-	//				if(SearchAlarmData(value["logType"]["logArea"]["logUnit"]["unit"],searchKey[2]))
-	//					if(SearchAlarmData(value["logType"]["logArea"]["logUnit"]["logHost"]["host"],searchKey[3]))
-	//					{
-	//						lt =value["logType"]["logArea"]["logUnit"]["logHost"]["otherHost"];
-	//						 dataInfo.m_strTime = lt["time"].asString();
-
-	//						if(dataInfo.m_strTime.c_str()>=startTime&&dataInfo.m_strTime.c_str()<=endTime)
-	//							
-	//						dataInfo.m_num = lt["num"].asInt();
-	//						dataInfo.m_strContent = lt["content"].asString();
-	//						dataInfo.m_strFrom = lt["strFrom"].asString();
-	//						dataInfo.m_strResult = lt["result"].asString();
-	//						dataInfo.m_strUser = lt["user"].asString();
-	//						val_AlarmInfoShow.push_back(dataInfo);
-	//					}
-	//						
-	//			
-	//	}
-
-	//	
-	//}
-
-
-	vector<Json::Value>::iterator	it;
-	if(!m_jAlarmData.empty())
-	{
-		vector<Json::Value> vecLog;
-		if(SearchCondition->m_logType == "日志类型"||SearchCondition->m_deviceType == "全部设备"
-			||SearchCondition->m_ereaType == "全部区域"||SearchCondition->m_unitType == "全部单元")
-		{
-
-		}
-	}
-
-}
-
-void CAlarmRecord::CmpTime(vector<Json::Value> vecUnit)
-{
-
-	CTime d1 = s_searchCond->m_dateBegin;
-	CTime d2 = s_searchCond->m_dateEnd;
-	CTime t1 = s_searchCond->m_timeBegin;
-	CTime t2 = s_searchCond->m_timeEnd;
-	CTime dtBegin(d1.GetYear(), d1.GetMonth(), d1.GetDay(), t1.GetHour(), t1.GetMinute(), t1.GetSecond());
-	CTime dtEnd(d2.GetYear(), d2.GetMonth(), d2.GetDay(), t2.GetHour(), t2.GetMinute(), t2.GetSecond());
-	char cTimeBegin[50] = {0};
-	char cTimeEnd[50] = {0};
-	char data[50] = {0};
-	int rowCnt = 0;
-	struct tm sTime;
-	time_t tBegin = dtBegin.GetTime();
-	time_t tEnd = dtEnd.GetTime();	
-	vector<Json::Value>::iterator it;
-
-	for(it = vecUnit.begin(); it != vecUnit.end(); it++)
-	{
-		Json::Value tmp = *it;
-		strcpy(data,tmp["host_date"].asString().c_str());			
-		//将时间字符串格式化成struct tm;
-		sscanf(data, "%d-%d-%d %d:%d:%d", &sTime.tm_year, &sTime.tm_mon, &sTime.tm_mday, &sTime.tm_hour, &sTime.tm_min, &sTime.tm_sec);
-		sTime.tm_year -= 1900;
-		sTime.tm_mon -= 1;
-		time_t tLog = mktime(&sTime);
-		if((tLog >= tBegin) && (tLog <= tEnd))			
-		{
-			AlarmInfo_show.m_num = rowCnt;
-			AlarmInfo_show.m_strFrom = tmp["dev_type"].asString().c_str();
-			AlarmInfo_show.m_strTime = data;
-			AlarmInfo_show.m_strUser = tmp["user"].asString().c_str();
-			AlarmInfo_show.m_strContent = tmp["content"].asString().c_str();
-			AlarmInfo_show.m_strResult = tmp["result"].asString().c_str();
-
-			val_AlarmInfoShow.push_back(AlarmInfo_show);
-			rowCnt++;
-		}
-	}	
-}
-
-
-// 
-bool CAlarmRecord::InitAlarmData(string jsonStr)
-{
-	Json::Value val;
-
-	for (int i = 0; i < 100; i++)
-	{
-		char bufDev[100] = {0};
-		char bufArea[100] = {0};
-		char bufUnit[100] = {0};
-		char bufUserName[100] = {0};
-		char bufHost[100] = {0};
-		char bufDate[50] = {0};
-		//		char bufTime[20] = {0};
-
-		if(i<30)
-		{
-			int j = 1;
-			sprintf(bufDev, "Device%04d", j);
-			sprintf(bufArea, "Arae%04d", j);
-			sprintf(bufUnit, "Unit%04d", j);
-		}
-		if(i>=30 && i<60)
-		{
-			int j = 2;
-			sprintf(bufDev, "Device%04d", j);
-			sprintf(bufArea, "Arae%04d", j);
-			sprintf(bufUnit, "Unit%04d", j);
-		}
-		if(i>=60)
-		{
-			int j = 3;
-			sprintf(bufDev, "Device%04d", j);
-			sprintf(bufArea, "Arae%04d", j);
-			sprintf(bufUnit, "Unit%04d", j);
-		}
-
-		val["defense_dtype"] = bufDev;	//dev_type
-
-		val["host_area"] = bufArea;		//areaType
-		val["defense_name"] = bufUnit;	//unitType
-		val["host_id"] =  i;
-		val["host_ver"] =  "1.0";
-		if (i %3 == 0)
-			val["log_dtype"] = "报警日志";   //log_type
-		if(i%3 == 1)
-			val["log_dtype"] = "设置日志";
-		if (i%3 == 2)
-			val["log_dtype"] = "操作日志";
-
-		sprintf(bufUserName, "Test_user%04d", i+1);
-		sprintf(bufHost, "host_name%04d", i+1);
-		val["dev_type"] = bufHost;  //from
-		//		int m_time = time(NULL);
-		int year = 2016;
-		int month = 5;
-		int day = (i+1)%32;
-		if(0 == day)
-			++day;
-		int hour = (i+1)%24;
-		int min = (i+1)%60;
-		int sec = (i+1)%60;
-		sprintf(bufDate,"%04d-%02d-%02d %02d:%02d:%02d",year,month,day,hour,min,sec);
-		val["host_date"] = bufDate;  //data
-		val["user"] = bufUserName; //userName
-		val["content"] = "my test log!";  //content
-		val["result"] = "success!"; //result
-		val["phones_array"] = Json::arrayValue;
-		for (int j = 0; j < 3; j++)
-		{
-			Json::Value valTemp;
-			valTemp["phone_num"] = "13688907907";
-			valTemp["country_code"] = "86";
-			//....
-
-			val["phones_array"].append(valTemp);
-		}
-
-		m_jAlarmData.push_back(val);
-	}	
-	return true;
-}
-
-
-vector<Json::Value> CAlarmRecord::get_ValJsonAlarmRecord(void)
-{
-	return m_jAlarmData;
-}
-
-///////////////////////////////////////////////////////////////////////////
-//Update alarm log
-//////////////////////////////////////////////////////////////////////////
-void CAlarmRecord::ShowAlarmInfo()
-{
-
-	CFile file;
-	string FileName = "alarmLog.dat";
-	//string path = getFolderPath(FileName);
-
-	CDlgAlarmLogLst* pWnd= m_DlgLst->GetLstDlgHandle();
-	CListCtrl *m_lstLogViewer = ((CListCtrl*)pWnd->GetDlgItem(IDC_LST_LOGLST));
-
-	m_lstLogViewer->DeleteAllItems();
-
-	int i = 0;
-	CString rowNum;
-	vector<CG_ALARMINFO_SHOW>::iterator it;
-	if(!val_AlarmInfoShow.empty())
-	{
-		SortLogByTime(val_AlarmInfoShow);
-		for( it = val_AlarmInfoShow.begin(); it!=val_AlarmInfoShow.end(); it++)
-		{
-			rowNum.Format("%d",i+1);
-			int nRow = m_lstLogViewer->InsertItem(i, rowNum);								//插入行
-			m_lstLogViewer->SetItemText(nRow, 1, ((*it).m_strFrom).c_str());							
-			m_lstLogViewer->SetItemText(nRow, 2, ((*it).m_strTime).c_str());								
-			m_lstLogViewer->SetItemText(nRow, 3, ((*it).m_strUser).c_str());								
-			m_lstLogViewer->SetItemText(nRow, 4, ((*it).m_strContent).c_str());		
-			m_lstLogViewer->SetItemText(nRow, 5, ((*it).m_strResult).c_str());	
-			i++;
-		}
-	}
-	else
-	{
-
-
-		AfxMessageBox("没有搜索到相应的记录！");
-
-	}
-
-
-	//WriterAlarmLog(val_AlarmInfoShow);
-}
-
-static bool SortLogAscd(CG_ALARMINFO_SHOW &v1, CG_ALARMINFO_SHOW &v2)
-{
-	return v1.m_strTime < v2.m_strTime;
-}
-
-static bool SortLogDescd(CG_ALARMINFO_SHOW &v1, CG_ALARMINFO_SHOW &v2)
-{
-	return v1.m_strTime > v2.m_strTime;
-}
-
-void CAlarmRecord::SortLogByTime(vector<CG_ALARMINFO_SHOW> &val_AlarmInfoShow)
-{
-	if(bClk)
-	{
-		std::sort(val_AlarmInfoShow.begin(),val_AlarmInfoShow.end(),SortLogAscd);
-	}
-	else
-	{
-		std::sort(val_AlarmInfoShow.begin(),val_AlarmInfoShow.end(),SortLogDescd);
-	}	
-}
-
-void CAlarmRecord::SaveSearchSetting()
-{
-	CG_SETTING_SAVE s_setting_save;
-	s_setting_save.m_dateBegin = s_searchCond->m_dateBegin;
-	s_setting_save.m_dateEnd = s_searchCond->m_dateEnd;
-	s_setting_save.m_timeBegin = s_searchCond->m_timeBegin;
-	s_setting_save.m_timeEnd = s_searchCond->m_timeEnd;
-	strcpy(s_setting_save.m_logType, s_searchCond->m_logType);
-	strcpy(s_setting_save.m_deviceType, (s_searchCond->m_deviceType));
-	strcpy(s_setting_save.m_ereaType, (s_searchCond->m_ereaType));
-	strcpy(s_setting_save.m_unitType, (s_searchCond->m_unitType));
-
-	CFile file;
-	char cSearchCond[MAX_PATH]; //TCHAR 
-	GetModuleFileName(NULL, cSearchCond, MAX_PATH);
-	(_tcsrchr(cSearchCond, _T('\\')))[1] = 0;
-	char folderName[] = "srchsetting.dat";
-	strcat(cSearchCond,folderName);
-	file.Open(cSearchCond,CFile::modeCreate|CFile::modeReadWrite);
-	file.Write(&s_setting_save, sizeof(CG_SETTING_SAVE));	
-	file.Flush();
-	file.Close();
-}
-
-void CAlarmRecord::WriterAlarmLog(CG_ALARMINFO_SHOW val_saveLog)
-{
-	Json::Value otherInfo;
-	Json::Value root;
-	Json::Value condition;
-	Json::Reader reader;  
-	Json::Value value;
-	string srtlen;
-
-	otherInfo["num"] = val_saveLog.m_num;
-	otherInfo["content"] = val_saveLog.m_strContent;
-	otherInfo["strFrom"] = val_saveLog.m_strFrom;
-	otherInfo["result"] = val_saveLog.m_strResult;
-	otherInfo["time"] = val_saveLog.m_strTime;
-	otherInfo["user"] = val_saveLog.m_strUser;
-	otherInfo["levelType"] =val_saveLog.locaInfo.level_logType;
-	otherInfo["levelArea"] = val_saveLog.locaInfo.level_logArea;
-	otherInfo["levelUnit"] = val_saveLog.locaInfo.level_logUnit;
-	otherInfo["levelHost"] = val_saveLog.locaInfo.level_logHost;
-
-	condition["levelType"] =val_saveLog.locaInfo.level_logType;
-	condition["levelArea"] = val_saveLog.locaInfo.level_logArea;
-	condition["levelUnit"] = val_saveLog.locaInfo.level_logUnit;
-	condition["levelHost"] = val_saveLog.locaInfo.level_logHost;
-	condition["time"] = val_saveLog.m_strTime;
-
-
-	Json::StyledWriter Writer;
-	string doc = Writer.write(otherInfo);
-	string searchCondition = Writer.write(condition);
-	sqlite3 *db;
-	char *zErrMsg = 0;
-	int  rc;
-	std::string escaped;
-	SQL_escape(doc.begin(), doc.end(), std::back_inserter(escaped));
-
-	string te = "''";
-	te.insert(1,escaped) ;
-	//te += "'";
-
-	string con = "''";
-	con.insert(1,searchCondition) ;
-	
-	string val_logHost = val_saveLog.locaInfo.level_logHost;
-	string text = " Text";
-	string logText ="ALTER TABLE HOSTNAME ADD COLUMN  Text";
-	logText.insert(32,val_logHost);
-
-	string sql = "SELECT *FROM HOSTNAME";
-	string st ="INSERT INTO HOSTNAME( ) VALUES( )";
-	st.insert(21,val_logHost);
-	st.insert(34,te.c_str());
-	const char* tem="not";
-
-
-	rc = sqlite3_open("log.db", &db); 
-	rc = sqlite3_exec(db, sql.c_str(), callback, (void*)tem, &zErrMsg);
-	//rc = sqlite3_exec(db, logText.c_str(), callback, 0, &zErrMsg);
-	//rc = sqlite3_exec(db, st.c_str(), callback, 0, &zErrMsg);
-
-
-	sqlite3_close(db);
-
-}
-
-int callback(void *NotUsed, int argc, char **argv, char **azColName){
-
-	if(strcmp((const char*)NotUsed,"xiju")==0)
-	{
-		Json::Reader reader;  
-		Json::Value value; 
-		string m_val;
-		CG_ALARMINFO_SHOW infoShow;
-		for(int i=0;i<argc; i++){
-			//TRACE("%s = %s\n", azColName[i],argv[i] ? argv[i] : "NULL");
-			TRACE("%d,%s=%s\n",argc,azColName[i],argv[i]);
-			m_val = argv[i];
-			if (reader.parse(m_val, value)) 
-			{
-				CString lv_ty = value["levelType"].asCString();
-				CString lv_ar = value["levelArea"].asCString();
-				CString lv_ut = value["levelUnit"].asCString();
-				CString lv_ho = value["levelHost"].asCString(); 
-				CString ti = value["time"].asCString();
-				TRACE("%s",searchKey[1]);
-				if(lv_ty==searchKey[0] && lv_ar==searchKey[1] 
-				   &&lv_ut==searchKey[2]&&lv_ho==searchKey[3]
-				   &&(ti>=searchKey[4]&&ti<=searchKey[5]))
-				   {
-					   int	  num     = value["num"].asInt();
-					   string content = value["content"].asString();
-					   string strFrom = value["strFrom"].asString();
-					   string result  = value["result"].asString();
-					   string time    = value["time"].asString();
-					   string user	  = value["user"].asString();
-					   val_AlarmInfoShow.push_back(infoShow);
-
-				   }
-					   
-
-
-			}	
-			
-		}
-	}
-	 
-	return 0;
-
-}
-
-//void CAlarmRecord::searchInsert(void)
-//{
-//	Json::Value testValue;
-//	vector <string> indexName;
-//	vector<ALARM_INDEX_POINT> logType;
-//	for(vector<ALARM_INDEX_POINT>::iterator it = logType.begin();it!=logType.end();it++) //日志类型
-//	{
-//		if(indexName.at(0) == it->type)
-//			for(vector<ALARM_INDEX_POINT>::iterator ite = it->point.begin();ite!=it->point.end();ite++)//区域类型
-//				if(indexName.at(1)==ite->type)
-//					for(vector<ALARM_INDEX_POINT>::iterator iter = ite->point.begin();iter!=ite->point.begin();iter++)
-//						if(indexName.at(2)==iter->type)
-//	}
+// DlgAlarmInfoInterface.cpp : implementation file
 //
-//}
 
-//void CAlarmRecord::SaveSe(string index, vector<ALARM_INDEX_POINT> type)
-//{
-//	for (vector<ALARM_INDEX_POINT>::iterator it = type.begin();it!=type.end();it++)
-//	{
-//		if (index ==)
-//		{
-//		}
-//	}
-//}
+#include "stdafx.h"
+#include "DlgAlarmInfoInterface.h"
+#include "DlgAlarmFilter.h"
+#include "DlgVideoShow.h"
+#include "AlarmLogMgr.h"
+#include "DlgVideoShow_OneUnit.h"
+#include "DlgAlarmPictureShow.h"
+#include "Global/CGProtocol.h"
 
-void CAlarmRecord::ReadInitAlarmLog(void)
+#define IDC_D_BTN 10000
+
+extern BOOL						Dlg_AlarmInfoState;
+extern CWnd*					tempWnd;
+extern CPictureEx*				m_pictureGif;
+extern CDlgVideoShow*			g_pDlgVideoShow;
+extern CDlgVideoShow_OneUnit*	s_pDlgOneUnit;
+int								buttonQuantity;
+int								DlgAlarmInfoInterface::broadcastAlarmInfo;
+int								DlgAlarmInfoInterface::currentButtonID;
+BOOL							DlgAlarmInfoInterface::alarmVideoAttributes =FALSE;
+string							DlgAlarmInfoInterface::alarmVideoIP;
+HostInfo*						DlgAlarmInfoInterface::hostInfo;
+ALARMLOGINFO					DlgAlarmInfoInterface::info;
+vector<ALARMLOGINFO>			DlgAlarmInfoInterface::tempSave;
+DlgAlarmInfoInterface*			s_pDlgAlarmInfo;
+extern int ShowDlgVideoShow_OneUnit(BOOL bShow, CWnd* pParent, IPCameraLoginInfo *pIpcInfo);
+/*------------------------------我的名字叫分割线----------------------------------------*/
+IMPLEMENT_DYNAMIC(DlgAlarmInfoInterface, CDialog)
+
+void ShowDlgAlarmInfoInterface(BOOL bShow, CWnd* pParent)
 {
-	CDlgAlarmLogLst* pWnd= m_DlgLst->GetLstDlgHandle();
-	CListCtrl *m_lstLogViewer = ((CListCtrl*)pWnd->GetDlgItem(IDC_LST_LOGLST));
-
-	CFile file;
-	char cSearchCond[MAX_PATH];
-	GetModuleFileName(NULL, cSearchCond, MAX_PATH);
-	(_tcsrchr(cSearchCond, _T('\\')))[1] = 0;
-	char folderName[] = "alarmLog.dat";		
-	strcat(cSearchCond,folderName);
-
-	if(file.Open(cSearchCond,CFile::modeRead))
+	//s_pDlgAlarmInfo = NULL;
+	if (!s_pDlgAlarmInfo)
 	{
-		struct SaveLog
-		{
-			int			m_num;
-			string		m_strFrom;	
-			char		m_strTime[20];
-			string		m_strUser;
-			string		m_strContent;
-			string		m_strResult;
-		}s_tmp;
-
-		CString rowNum;
-		int nLen = (int)file.GetLength();
-		int nCnt = nLen/sizeof(SaveLog);
-		for(int i=0; i<nCnt; i++)
-		{
-			file.Read(&s_tmp, sizeof(SaveLog));
-			rowNum.Format("%d",i+1);
-			int cRow = m_lstLogViewer->InsertItem(i, rowNum);								//插入行
-			m_lstLogViewer->SetItemText(cRow, 1, (s_tmp.m_strFrom).c_str());							
-			m_lstLogViewer->SetItemText(cRow, 2, s_tmp.m_strTime);					
-			m_lstLogViewer->SetItemText(cRow, 3, (s_tmp.m_strUser).c_str());								
-			m_lstLogViewer->SetItemText(cRow, 4, (s_tmp.m_strContent).c_str());		
-			m_lstLogViewer->SetItemText(cRow, 5, (s_tmp.m_strResult).c_str());
-
-			AlarmInfo_show.m_num = s_tmp.m_num;											
-			AlarmInfo_show.m_strFrom = s_tmp.m_strFrom;
-			AlarmInfo_show.m_strTime = s_tmp.m_strTime;
-			AlarmInfo_show.m_strContent = s_tmp.m_strContent;
-			AlarmInfo_show.m_strUser = s_tmp.m_strUser;
-			AlarmInfo_show.m_strResult = s_tmp.m_strResult;
-			val_AlarmInfoShow.push_back(AlarmInfo_show);					//启动程序后直接对保存的log按时间排序需要用到
-		}
-
-		file.Close();	
+		s_pDlgAlarmInfo = new DlgAlarmInfoInterface(pParent);	
 	}
+	if(!s_pDlgAlarmInfo->m_hWnd)
+		s_pDlgAlarmInfo->Create(DlgAlarmInfoInterface::IDD, pParent);
 
-	return;
+	s_pDlgAlarmInfo->ShowWindow(bShow ? SW_SHOW : SW_HIDE);
+
 }
 
-CAlarmRecord *GetAlarmRecord()
+DlgAlarmInfoInterface::DlgAlarmInfoInterface(CWnd* pParent /*=NULL*/)
+	: CDialog(DlgAlarmInfoInterface::IDD, pParent)
 {
-	if (g_alarmRecord == NULL)
-	{
-		g_alarmRecord = new CAlarmRecord;
-	}
-	return g_alarmRecord;
+	buttonQuantity = 1;
+	pictureState = false;
+	
+}
+
+DlgAlarmInfoInterface::~DlgAlarmInfoInterface()
+{
+	alarmVideoAttributes =FALSE;
+	/*delete s_pDlgAlarmInfo;
+	s_pDlgAlarmInfo = NULL;*/
+}
+
+void DlgAlarmInfoInterface::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_ALARM_LIST, (CWnd&)alarmList);
+}
+
+
+BEGIN_MESSAGE_MAP(DlgAlarmInfoInterface, CDialog)
+	ON_WM_CLOSE()
+	ON_WM_PAINT()
+	ON_WM_SYSCOMMAND()
+	//ON_COMMAND_RANGE(IDC_D_BTN, IDC_D_BTN +10, onButtonClick)
+	ON_STN_CLICKED(IDC_PIC_DOWN, &DlgAlarmInfoInterface::OnStnClickedPicDown)
+	ON_STN_CLICKED(IDC_previousPicture, &DlgAlarmInfoInterface::OnStnClickedpreviouspicture)
+	ON_BN_CLICKED(IDC_confirm, &DlgAlarmInfoInterface::OnBnClickedconfirm)
+	ON_BN_CLICKED(IDC_WATCH_ALARM_VIDEO, &DlgAlarmInfoInterface::OnBnClickedWatchAlarmVideo)
+	ON_NOTIFY(NM_CLICK, IDC_ALARM_LIST, &DlgAlarmInfoInterface::OnNMClickAlarmList)
+	ON_STN_CLICKED(IDC_sencePicture, &DlgAlarmInfoInterface::OnStnClickedsencepicture)
+	ON_STN_CLICKED(IDC_AlarmPicture1, &DlgAlarmInfoInterface::OnStnClickedAlarmpicture1)
+END_MESSAGE_MAP()
+
+
+
+BOOL DlgAlarmInfoInterface::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+	/*alarmList = ((CListCtrl*)GetDlgItem(IDC_ALARM_LIST));
+	alarmList->SetExtendedStyle(LVS_EX_FULLROWSELECT|LVS_EX_HEADERDRAGDROP
+		|LVS_EX_GRIDLINES|LVS_EX_ONECLICKACTIVATE|LVS_EX_FLATSB);
+
+	alarmList->InsertColumn( 0, _T("区域"), LVCFMT_LEFT, 50 );
+	alarmList->InsertColumn( 1, _T("单元"), LVCFMT_LEFT, 50 );
+	alarmList->InsertColumn( 2, _T("主机"), LVCFMT_LEFT, 50 );
+	alarmList->InsertColumn( 3, _T("时间"), LVCFMT_LEFT, 100 );*/
+	initPictureInfo();
+	info.picturePath = "D:\\Project\\SVN\\server_alarm__\\bin\\A1_40_2016-08-28_17-58-54";
+	
+	
+	// TODO:  在此添加额外的初始化
+	//if (tempSave.size()!=0)
+	//{
+	//	info = *tempSave.begin();
+	//}
+	//else
+	//	SetAlarmData();
+	//
+	//InitData();
+	//alarmVideoAttributes =TRUE;
+	//
+
+	return TRUE;  
+	
 }
 
 /*------------------------------我的名字叫分割线----------------------------------------*/
-string CAlarmRecord::getFolderPath(string folderName)
+string DlgAlarmInfoInterface::getFolderPath(string folderName)
 {
 	char cSearchCond[MAX_PATH]; //TCHAR 
 	GetModuleFileName(NULL, cSearchCond, MAX_PATH);
 	(_tcsrchr(cSearchCond, _T('\\')))[1] = 0;
 	strcat(cSearchCond,folderName.c_str());
 	return cSearchCond;
+	
+}
+
+/*------------------------------我的名字叫分割线----------------------------------------*/
+void DlgAlarmInfoInterface::getFloderImage(string imagePath)
+{
+	m_pDir = opendir(imagePath.c_str());
+	if(m_pDir){
+		for (int k =0; k<2;k++)
+			m_pEnt=readdir(m_pDir);
+		GetNextBigImg();
+	}
+	
+		
+	if(!prevPict.empty()){
+			
+			ShowTheImgSet(prevPict.at(0));
+			ShowTheImgSet(prevPict.at(1));
+			/*ShowTheImgSet(prevPict.at(2));
+			ShowTheImgSet(prevPict.at(3));*/
+			pictureLocation = 0;
+	}
+	
+}
+
+/*------------------------------我的名字叫分割线----------------------------------------*/
+void DlgAlarmInfoInterface::ShowTheImgSet(PICTUREINFORMATION pictinfo)
+{
+	if( m_bitmap.m_hObject != NULL )//判断
+		m_bitmap.DeleteObject();
+	CImage img;
+	img.Load(pictinfo.path.c_str());
+	HBITMAP hbmp = img.Detach();
+	/*(HBITMAP)::LoadImage(AfxGetInstanceHandle(),
+	pictinfo.path.c_str() , IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION|LR_LOADFROMFILE);*/
+	if( hbmp == NULL )
+		return ;
+
+	m_bitmap.Attach( hbmp );
+	DIBSECTION ds;
+ 	BITMAPINFOHEADER &bminfo = ds.dsBmih;
+ 	m_bitmap.GetObject( sizeof(ds), &ds );
+	CRect rect;
+	GetDlgItem(pictinfo.pictControlID)->GetWindowRect(&rect);
+	ScreenToClient(&rect);
+//	ScreenToClient(&pictinfo.size);
+	GetDlgItem(pictinfo.pictControlID)->MoveWindow(pictinfo.size,TRUE);
+	
+		pictureState = true;
+		pictureId =pictinfo.pictControlID;
+		::RedrawWindow(this->m_hWnd,pictinfo.size,NULL,RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
+		//Invalidate(FALSE);
 
 }
 
-bool CAlarmRecord::SearchAlarmData(Json::Value m_Value,CString type)
+/*------------------------------我的名字叫分割线----------------------------------------*/
+ALARMLOGINFO DlgAlarmInfoInterface::getCurrentData(string FloderName)
 {
 
-	for(int i = 0;i<m_Value.size();++i)
-	{
-		string st = m_Value[i].asString();
-		if(st.c_str()==type){
-			return true;
+	CTime  currentTime = CTime::GetCurrentTime();
+	string timeFormat = currentTime.Format(_T("%Y-%m-%d %H:%M:%S"));
+	string tmpF = currentTime.Format(_T("%Y-%m-%d_%H-%M-%S"));
+	FloderName += tmpF;
+	DWORD dwAttr=GetFileAttributes(getFolderPath(FloderName).c_str());
+	//若文件夹不存在，创建文件夹
+	if(dwAttr==0xFFFFFFFF)
+		CreateDirectory(getFolderPath(FloderName).c_str(),NULL);
+	 
+	 string path = getFolderPath(FloderName);
+ 	 info.happenTime = timeFormat;
+	 info.happenArea = hostInfo->strAreaName;
+	 info.happenUnit = hostInfo->strUnitName;
+	 info.happenHost = hostInfo->strHostName;
+	 info.picturePath = path;
+	 return info;
+}
 
+
+
+
+
+/*------------------------------我的名字叫分割线----------------------------------------*/
+
+void DlgAlarmInfoInterface::OnBnClickedconfirm()
+{
+	CString SO;
+	CString tempOfficer;
+	CString tempRemark;
+	m_SecurityOfficer->GetWindowText(tempOfficer);
+	
+	CG_ALARMINFO_SHOW infoshow;
+	vector<CG_ALARMINFO_SHOW> temp_show;
+	Dlg_AlarmInfoState = FALSE;
+	/*添加安全员等信息*/
+	for (vector<ALARMLOGINFO>::iterator it =tempSave.begin();it!=tempSave.end();it++)
+	{
+		if (it->buttonID == currentButtonID)
+		{
+			it->securityOfficer = tempOfficer;
+			it->remark = tempRemark;
+			info = *it;
 			break;
 		}
 	}
-	return false;
+
+	infoshow.m_strTime = info.happenTime;
+	infoshow.m_strFrom = info.happenArea;
+	infoshow.m_strFrom += "_";
+	infoshow.m_strFrom += info.happenUnit;
+	infoshow.m_strFrom += "_";
+	infoshow.m_strFrom += info.happenHost;
+	infoshow.locaInfo.level_logType = "报警日志";
+	infoshow.locaInfo.level_logArea =info.happenArea;
+	infoshow.locaInfo.level_logUnit = info.happenUnit;
+	infoshow.locaInfo.level_logHost = info.happenHost;
+	temp_show.push_back(infoshow);
+	m_record->WriterAlarmLog(infoshow); //把信息存入可持久文件中
+
+	
+	//删除当前已被确认的报警信息
+	for (vector<ALARMLOGINFO>::iterator it = tempSave.begin(); it != tempSave.end(); it++)
+	{
+		if (it->buttonID == currentButtonID)
+		{
+			tempSave.erase(it);
+			break;
+		}
+	}
+
+	//当没有报警信息时，删除主界面的闪烁图标
+	
+	if(tempSave.size()==0)
+		CDlgAlarmPictureShow::s_pDlgAlarmPictureShow->ShowWindow(SW_HIDE);
+	OnCancel();
 }
 
+
+
+void DlgAlarmInfoInterface::InitData()
+{
+	m_HappenTime = (CEdit *)GetDlgItem(IDC_happenTime);
+	m_HappenArea = (CComboBox *)GetDlgItem(IDC_happenLocation);
+	m_HappenUnit = (CComboBox *)GetDlgItem(IDC_hanppenUnit);
+	m_SecurityOfficer = (CComboBox *)GetDlgItem(IDC_Security_Officer);
+	m_Remark = (CEdit *)GetDlgItem(IDC_REMARK);
+
+	CString strUserType;
+	CString strUserName;
+	vector<UserInfo> vecUser;
+	m_SecurityOfficer->ResetContent();
+	int vecSize = gCGData.GetUser(vecUser);
+	for(int i = 0; i < vecSize; i++)		
+	{
+		strUserType = vecUser.at(i).user_type.c_str();
+		if(strUserType =="管理员"){
+			strUserName = vecUser.at(i).user_name.c_str();
+			m_SecurityOfficer->AddString(strUserName);
+		}
+	}
+	
+	m_SecurityOfficer->SetCurSel(0);
+	m_HappenTime->SetWindowText(info.happenTime.c_str());
+	m_HappenArea->SetWindowText(info.happenArea.c_str());
+	m_HappenArea->SetWindowText(info.happenUnit.c_str());
+	currentButtonID = info.buttonID;
+	getFloderImage(info.picturePath);
+	
+}
+
+/*------------------------------我的名字叫分割线----------------------------------------*/
+void DlgAlarmInfoInterface::SetAlarmData()
+{
+	alarmList = ((CListCtrl*)GetDlgItem(IDC_ALARM_LIST));
+	char buf[20] ;
+	int id = broadcastAlarmInfo;
+	sprintf(buf,"%d",id);
+	string name = hostInfo->strHostName;
+	name += "_";
+	name += buf;
+	name += "_";
+	getCurrentData(name);
+	CTime  currentTime = CTime::GetCurrentTime();
+	string timeFormat = currentTime.Format(_T("%Y-%m-%d %H:%M:%S"));
+	CString rowNum;
+	int cRow;
+	rowNum.Format("%d",tempSave.size()+1);
+	if(tempSave.size()==0)
+	{
+		cRow =alarmList->GetItemCount();
+		alarmList->InsertItem(cRow,"");
+		alarmList->SetItemText(cRow,0,hostInfo->strAreaName.c_str());
+		alarmList->SetItemText(cRow,1,hostInfo->strUnitName.c_str());
+		alarmList->SetItemText(cRow,2,hostInfo->strHostName.c_str());
+		alarmList->SetItemText(cRow,3,timeFormat.c_str());
+	}
+	else
+	{
+		cRow =alarmList->GetItemCount();
+		alarmList->InsertItem(cRow,"");
+		alarmList->SetItemText(cRow,0,hostInfo->strAreaName.c_str());
+		alarmList->SetItemText(cRow,1,hostInfo->strUnitName.c_str());
+		alarmList->SetItemText(cRow,2,hostInfo->strHostName.c_str());
+		alarmList->SetItemText(cRow,3,timeFormat.c_str());
+	}
+	info.buttonID = cRow;
+	info.m_ipCameraLoginInfo = getIPCameraInfo(hostInfo->jTerminal);
+	tempSave.push_back(info);
+	
+
+}
+
+
+
+
+
+/*------------------------------我的名字叫分割线----------------------------------------*/
+void DlgAlarmInfoInterface::AlarmPictureDraw(int pictureID)
+{
+	CRect rcClient;
+	CDC dcMem;
+	GetDlgItem(pictureID)->GetWindowRect(&rcClient); //让rcClient获得这个控件的rectt
+	CPaintDC dc(GetDlgItem(pictureID));//获得这个控件的DC
+	dcMem.CreateCompatibleDC(&dc);
+
+	CBitmap *pOldBmp = dcMem.SelectObject(&m_bitmap);
+
+	BITMAP bm;
+	m_bitmap.GetBitmap(&bm);
+	dc.SetStretchBltMode(HALFTONE);
+	dc.StretchBlt(0, 0, rcClient.Width(), rcClient.Height(), &dcMem, 
+		0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+	dcMem.SelectObject(pOldBmp);
+	dcMem.DeleteDC();
+	pictureState = false;
+
+	
+}
+
+/*------------------------------我的名字叫分割线----------------------------------------*/
+//void DlgAlarmInfoInterface::onButtonClick(UINT n_ID)
+//{
+//	for (vector<ALARMLOGINFO>::iterator it = tempSave.begin(); it != tempSave.end(); it++)
+//	{
+//		if (it->buttonID == n_ID)
+//		{
+//			info = *it;
+//			getFloderImage(it->picturePath);
+//			m_HappenTime = (CEdit *)GetDlgItem(IDC_happenTime);
+//			m_HappenLocation = (CEdit *)GetDlgItem(IDC_happenLocation);
+//			currentButtonID = n_ID;
+//			m_HappenTime->SetWindowText(it->happenTime.c_str());
+//			m_HappenLocation->SetWindowText(it->happenLocation.c_str());
+//			ipCameraInfo = it->m_ipCameraLoginInfo;
+//			s_pDlgOneUnit->OnBnClickedBtnClose_alarm();
+//			break;
+//		}
+//
+//	}
+//	this->UpdateWindow();
+//}
+
+/*------------------------------我的名字叫分割线----------------------------------------*/
+
+void DlgAlarmInfoInterface::GetNextBigImg()
+{
+	char* pJpg;
+	char* pBmp;
+	char* pPng;
+	char* pJPG;
+	//prevPict.clear();
+	for(int i=0;i<4;i++)
+	{	
+		
+		m_pEnt=readdir(m_pDir);
+		int err = GetLastError();
+		if( m_pDir&& m_pEnt!=NULL)//readdir返回文件的名字，m_pDir这个变量会记录当前指针位置
+		{//判断名字中有没有.jpg 即判断是否为图片文件
+			 string path = info.picturePath;
+			 pJpg=strstr(m_pEnt->d_name,".jpg");
+			 if(pJpg){
+				
+				path.append(1,'\\');
+				path.append(m_pEnt->d_name);
+			
+				prevPictPath = path ;	
+			    prevPict.at(i).path =prevPictPath;
+			}
+		}
+		
+	}	
+
+}
+
+
+void DlgAlarmInfoInterface::PostNcDestroy()
+{
+
+		//delete this;
+		
+		CDialog::PostNcDestroy();
+}
+
+
+
+void DlgAlarmInfoInterface::OnCancel(){	
+
+	s_pDlgOneUnit->OnBnClickedBtnClose_alarm();
+	DestroyWindow(); 	
+}
+
+void DlgAlarmInfoInterface::OnPaint()
+{
+	CPaintDC dc(this); 
+	if(pictureState){AlarmPictureDraw(pictureId);}
+
+	CWnd::OnPaint();
+}
+
+void DlgAlarmInfoInterface::OnSysCommand(UINT nID, LPARAM lParam)
+{
+	CDialog::OnSysCommand(nID, lParam);
+}
+
+
+
+/*summary:显示上一张图片*/
+void DlgAlarmInfoInterface::OnStnClickedpreviouspicture()
+{
+	//if(!prevPict.empty())
+	//{
+	//
+	//	if(pictureLocation>0)
+	//	{
+	//		prvePictNum = pictureLocation;
+	//		char t[4];
+	//		string s;
+	//		sprintf(t, "%d", prvePictNum++);
+	//		s = t;
+	//		s +="/4";
+	//		GetDlgItem(IDC_CURRENT_PICT_NUM)->SetWindowText(s.c_str());
+	//		ShowTheImgSet(const_cast<char*>(prevPict.at(--pictureLocation).c_str()));
+
+	//	}
+	//}
+
+}
+
+
+/*summary:显示下一张图片*/
+void DlgAlarmInfoInterface::OnStnClickedPicDown()
+{
+	//if(!prevPict.empty())
+	//{
+	//	if(pictureLocation<prevPict.size()-1)
+	//	{
+	//		
+	//		ShowTheImgSet(const_cast<char*>(prevPict.at(++pictureLocation).c_str()));
+	//		nextPictNum =1;
+	//			
+	//		nextPictNum+= pictureLocation;
+	//	
+	//		char t[4];
+	//		string s;
+	//		sprintf(t, "%d", nextPictNum);
+	//		s = t;
+	//		s +="/4";
+	//		GetDlgItem(IDC_CURRENT_PICT_NUM)->SetWindowText(s.c_str());
+	//		//int er = GetLastError();
+	//	}
+
+	//}
+
+}
+
+	
+void DlgAlarmInfoInterface::OnClose(){OnBnClickedconfirm();}
+
+
+void DlgAlarmInfoInterface::OnBnClickedWatchAlarmVideo()
+{
+	//Json::Value valCam;
+	//HWND m_wnd = AfxGetMainWnd()->m_hWnd;
+
+	////CDlgVideoUnit* vu  =new CDlgVideoUnit();
+	//::SetWindowPos(m_wnd,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE);
+
+
+	////m_ipCameraLoginInfo.port = 80;
+	////m_ipCameraLoginInfo.addr ="192.168.1.88"; //alarmVideoIP;
+	////m_ipCameraLoginInfo.pswd = "admin";
+	////m_ipCameraLoginInfo.userName ="admin";
+	////m_ipCameraLoginInfo.title = "办公室";
+	//if(ipCameraInfo.port)
+	//	ShowDlgVideoShow_OneUnit(TRUE, this, &ipCameraInfo);
+	//else
+	//	AfxMessageBox("没有获取到相关信息");
+	getFloderImage("D:\\Project\\SVN\\server_alarm__\\bin\\A1_40_2016-08-28_17-58-54");
+	
+}
+
+
+IPCameraLoginInfo DlgAlarmInfoInterface::getIPCameraInfo(Json::Value valCam)
+{
+	IPCameraLoginInfo m_ipCameraLoginInfo;
+	//valCam = hostInfo->jTerminal;
+	int iCount = valCam[DRIVER_INFO::JTERMINAL::DRIVER_COUNT].asInt();
+	Json::Value driver_array = valCam[DRIVER_INFO::JTERMINAL::DRIVER_ARRAY];
+	int iArrSize =  driver_array.size();
+
+	if (iCount != iArrSize)
+	{
+		printf("数据不匹配!!!!!!!!!\n");
+	}
+
+	for (int i=0; i<iArrSize; i++)
+	{
+		if (driver_array[i][DRIVER_INFO::JTERMINAL::DRIVER_TYPE_JTERMINAL].asInt() == DRV_IPC)
+		{
+		/*	if(DlgAlarmInfoInterface::alarmVideoIP
+				==driver_array[i][DRIVER_INFO::JTERMINAL::DRIVER_IP].asString())*/
+			{
+				m_ipCameraLoginInfo.port = driver_array[i]
+				[DRIVER_INFO::JTERMINAL::DRIVER_PORT].asInt();
+				m_ipCameraLoginInfo.addr = DlgAlarmInfoInterface::alarmVideoIP;
+				m_ipCameraLoginInfo.userName = driver_array[i]
+				[DRIVER_INFO::JTERMINAL::DRIVER_LOGINUSER].asString();
+				m_ipCameraLoginInfo.pswd = driver_array[i]
+				[DRIVER_INFO::JTERMINAL::DRIVER_LOGINPASS].asString();
+				break;
+			}			
+		}
+	}
+	
+	return m_ipCameraLoginInfo;
+}
+
+//系统自带的列表单击相应函数
+void DlgAlarmInfoInterface::OnNMClickAlarmList(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	//LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+	NM_LISTVIEW* pNMListView = (NM_LISTVIEW*)pNMHDR;
+	if(pNMListView->iItem != -1)
+        {
+			for (vector<ALARMLOGINFO>::iterator it = tempSave.begin(); it != tempSave.end(); it++)
+			{
+				if (it->buttonID == pNMListView->iItem)
+				{
+					info = *it;
+					getFloderImage(it->picturePath);
+					m_HappenTime = (CEdit *)GetDlgItem(IDC_happenTime);
+					m_HappenArea = (CComboBox *)GetDlgItem(IDC_happenLocation);
+					m_HappenUnit = (CComboBox *)GetDlgItem(IDC_hanppenUnit);
+					currentButtonID = pNMListView->iItem;
+					m_HappenTime->SetWindowText(it->happenTime.c_str());
+					m_HappenArea->SetWindowText(info.happenArea.c_str());
+					m_HappenArea->SetWindowText(info.happenUnit.c_str());
+					ipCameraInfo = it->m_ipCameraLoginInfo;
+					s_pDlgOneUnit->OnBnClickedBtnClose_alarm();
+					break;
+				}
+
+			}
+			this->UpdateWindow();
+        }
+	*pResult = 0;
+}
+
+
+void DlgAlarmInfoInterface::initPictureInfo()
+{
+	PICTUREINFORMATION pictInfo;
+	CRect rec;
+	rec.left =300;
+	rec.top = 50;
+	rec.right = 450;
+	rec.bottom = 200;	
+	
+	pictInfo.pictControlID = IDC_sencePicture;
+	pictInfo.size =rec;
+	prevPict.push_back(pictInfo);
+	
+	pictInfo.pictControlID = IDC_AlarmPicture1;
+	rec.left =500;
+	rec.top = 200;
+	rec.right = 600;
+	rec.bottom = 350;
+	pictInfo.size =rec;
+	prevPict.push_back(pictInfo);
+	
+	pictInfo.pictControlID = IDC_ALARM_PICTURE2;
+	rec.left =80;
+	rec.top = 100;
+	rec.right = 200;
+	rec.bottom = 170;
+	pictInfo.size =rec;
+	prevPict.push_back(pictInfo);
+
+	pictInfo.pictControlID = IDC_ALARM_PICTURE3;
+	rec.left =80;
+	rec.top = 100;
+	rec.right = 200;
+	rec.bottom = 170;
+	pictInfo.size =rec;
+	prevPict.push_back(pictInfo);
+}
+void DlgAlarmInfoInterface::OnStnClickedsencepicture()
+{
+	// TODO: Add your control notification handler code here
+}
+
+void DlgAlarmInfoInterface::OnStnClickedAlarmpicture1()
+{
+	// TODO: Add your control notification handler code here
+}
