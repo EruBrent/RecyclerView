@@ -76,8 +76,8 @@ BEGIN_MESSAGE_MAP(DlgAlarmInfoInterface, CDialog)
 	ON_BN_CLICKED(IDC_confirm, &DlgAlarmInfoInterface::OnBnClickedconfirm)
 	ON_BN_CLICKED(IDC_WATCH_ALARM_VIDEO, &DlgAlarmInfoInterface::OnBnClickedWatchAlarmVideo)
 	ON_NOTIFY(NM_CLICK, IDC_ALARM_LIST, &DlgAlarmInfoInterface::OnNMClickAlarmList)
-	ON_STN_CLICKED(IDC_sencePicture, &DlgAlarmInfoInterface::OnStnClickedsencepicture)
-	ON_STN_CLICKED(IDC_AlarmPicture1, &DlgAlarmInfoInterface::OnStnClickedAlarmpicture1)
+//	ON_STN_CLICKED(IDC_sencePicture, &DlgAlarmInfoInterface::OnStnClickedsencepicture)
+//	ON_STN_CLICKED(IDC_AlarmPicture1, &DlgAlarmInfoInterface::OnStnClickedAlarmpicture1)
 END_MESSAGE_MAP()
 
 
@@ -94,7 +94,7 @@ BOOL DlgAlarmInfoInterface::OnInitDialog()
 	alarmList->InsertColumn( 2, _T("主机"), LVCFMT_LEFT, 50 );
 	alarmList->InsertColumn( 3, _T("时间"), LVCFMT_LEFT, 100 );*/
 	initPictureInfo();
-	info.picturePath = "D:\\Project\\SVN\\server_alarm__\\bin\\A1_40_2016-08-28_17-58-54";
+	info.picturePath = "D:\\SVN\\server_alarm__\\bin\\A1_40_2016-08-28_17-58-54";
 	
 	
 	// TODO:  在此添加额外的初始化
@@ -139,8 +139,8 @@ void DlgAlarmInfoInterface::getFloderImage(string imagePath)
 			
 			ShowTheImgSet(prevPict.at(0));
 			ShowTheImgSet(prevPict.at(1));
-			/*ShowTheImgSet(prevPict.at(2));
-			ShowTheImgSet(prevPict.at(3));*/
+			ShowTheImgSet(prevPict.at(2));
+			ShowTheImgSet(prevPict.at(3));
 			pictureLocation = 0;
 	}
 	
@@ -154,8 +154,7 @@ void DlgAlarmInfoInterface::ShowTheImgSet(PICTUREINFORMATION pictinfo)
 	CImage img;
 	img.Load(pictinfo.path.c_str());
 	HBITMAP hbmp = img.Detach();
-	/*(HBITMAP)::LoadImage(AfxGetInstanceHandle(),
-	pictinfo.path.c_str() , IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION|LR_LOADFROMFILE);*/
+
 	if( hbmp == NULL )
 		return ;
 
@@ -517,7 +516,7 @@ void DlgAlarmInfoInterface::OnBnClickedWatchAlarmVideo()
 	//	ShowDlgVideoShow_OneUnit(TRUE, this, &ipCameraInfo);
 	//else
 	//	AfxMessageBox("没有获取到相关信息");
-	getFloderImage("D:\\Project\\SVN\\server_alarm__\\bin\\A1_40_2016-08-28_17-58-54");
+	getFloderImage("D:\\SVN\\server_alarm__\\bin\\A1_40_2016-08-28_17-58-54");
 	
 }
 
@@ -604,34 +603,34 @@ void DlgAlarmInfoInterface::initPictureInfo()
 	
 	pictInfo.pictControlID = IDC_AlarmPicture1;
 	rec.left =500;
-	rec.top = 200;
-	rec.right = 600;
-	rec.bottom = 350;
+	rec.top = 50;
+	rec.right = 650;
+	rec.bottom = 200;
 	pictInfo.size =rec;
 	prevPict.push_back(pictInfo);
 	
 	pictInfo.pictControlID = IDC_ALARM_PICTURE2;
-	rec.left =80;
-	rec.top = 100;
-	rec.right = 200;
-	rec.bottom = 170;
+	rec.left =300;
+	rec.top = 250;
+	rec.right = 450;
+	rec.bottom = 400;
 	pictInfo.size =rec;
 	prevPict.push_back(pictInfo);
 
 	pictInfo.pictControlID = IDC_ALARM_PICTURE3;
-	rec.left =80;
-	rec.top = 100;
-	rec.right = 200;
-	rec.bottom = 170;
+	rec.left =500;
+	rec.top = 250;
+	rec.right = 650;
+	rec.bottom = 400;
 	pictInfo.size =rec;
 	prevPict.push_back(pictInfo);
 }
-void DlgAlarmInfoInterface::OnStnClickedsencepicture()
-{
-	// TODO: Add your control notification handler code here
-}
-
-void DlgAlarmInfoInterface::OnStnClickedAlarmpicture1()
-{
-	// TODO: Add your control notification handler code here
-}
+//void DlgAlarmInfoInterface::OnStnClickedsencepicture()
+//{
+//	// TODO: Add your control notification handler code here
+//}
+//
+//void DlgAlarmInfoInterface::OnStnClickedAlarmpicture1()
+//{
+//	// TODO: Add your control notification handler code here
+//}
